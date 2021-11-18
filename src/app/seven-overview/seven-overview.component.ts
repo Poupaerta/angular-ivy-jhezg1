@@ -25,6 +25,8 @@ export class SevenOverviewComponent implements OnInit {
   private heightDetails;
   private heightOverall;
   private heightEnergy;
+  private toGridDirection;
+  private gridValueString;
 
   constructor() {
     this.width = 900 - this.margin.left - this.margin.right;
@@ -46,11 +48,27 @@ export class SevenOverviewComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // this.prepareData();
+    this.prepareData();
     this.createSvg();
     this.drawEnergyOverview();
     this.drawUserComfort();
   }
+  private prepareData() {
+    //Grid data
+    var gridValueTagIndex = reportDataOverviewTagHistory.data.findIndex(
+      (item) => item.Tag.Asset.Code == 'GLTB'
+    );
+    var gridValue =
+      reportDataOverviewTagHistory.data[gridValueTagIndex].Values[0]
+        .FloatingPointValue;
+    var gridValueUnit =
+      reportDataOverviewTagHistory.data[gridValueTagIndex].MeasurementUnit
+        .Symbol;
+    this.gridValueString =
+      Math.abs(_.round(gridValue, 3).toFixed(1)) + ' ' + gridValueUnit;
+    this.toGridDirection = gridValue < 0 ? true : false;
+  }
+
   private createSvg() {
     this.svg = d3.select('#sevenOverview');
     this.gMainGroup = this.svg
@@ -96,60 +114,58 @@ export class SevenOverviewComponent implements OnInit {
       posArrEnergyOverview[10][0].x,
       posArrEnergyOverview[10][0].y,
       'grey',
-      0.2
+      0.17,
+      { moveLeft: 10 }
     );
-    var toGridValueString =
-      _.round(
-        reportDataOverviewTagHistory.data[0].Values[0].FloatingPointValue,
-        3
-      ).toFixed(3) +
-      ' ' +
-      reportDataOverviewTagHistory.data[0].MeasurementUnit.Symbol;
-    this.appendText(
-      toGridValueString,
-      energyOverview,
-      posArrEnergyOverview[7][1].x,
-      posArrEnergyOverview[7][1].y,
-      this.sevenBlue
-    );
-    this.appendText(
-      'to grid',
-      energyOverview,
-      posArrEnergyOverview[8][1].x,
-      posArrEnergyOverview[8][1].y,
-      'grey'
-    );
-    this.appendPath(
-      'leftArrow',
-      energyOverview,
-      posArrEnergyOverview[9][1].x,
-      posArrEnergyOverview[9][1].y,
-      this.sevenBlue,
-      0.06,
-      { moveUp: 5 }
-    );
-    this.appendPath(
-      'rightArrow',
-      energyOverview,
-      posArrEnergyOverview[11][1].x,
-      posArrEnergyOverview[11][1].y,
-      this.sevenBlue,
-      0.06
-    );
-    this.appendText(
-      'from grid',
-      energyOverview,
-      posArrEnergyOverview[12][1].x,
-      posArrEnergyOverview[12][1].y,
-      'grey'
-    );
-    this.appendText(
-      toGridValueString,
-      energyOverview,
-      posArrEnergyOverview[13][1].x,
-      posArrEnergyOverview[13][1].y,
-      this.sevenBlue
-    );
+    if (this.toGridDirection) {
+      this.appendText(
+        this.gridValueString,
+        energyOverview,
+        posArrEnergyOverview[9][1].x,
+        posArrEnergyOverview[9][1].y,
+        this.sevenBlue
+      );
+      this.appendText(
+        'to grid',
+        energyOverview,
+        posArrEnergyOverview[10][1].x,
+        posArrEnergyOverview[10][1].y,
+        'grey'
+      );
+      this.appendPath(
+        'leftArrow',
+        energyOverview,
+        posArrEnergyOverview[11][1].x,
+        posArrEnergyOverview[11][1].y,
+        this.sevenBlue,
+        0.06,
+        { moveUp: 5 }
+      );
+    } else {
+      this.appendPath(
+        'rightArrow',
+        energyOverview,
+        posArrEnergyOverview[9][1].x,
+        posArrEnergyOverview[9][1].y,
+        this.sevenBlue,
+        0.06
+      );
+      this.appendText(
+        'from grid',
+        energyOverview,
+        posArrEnergyOverview[10][1].x,
+        posArrEnergyOverview[10][1].y,
+        'grey'
+      );
+      this.appendText(
+        this.gridValueString,
+        energyOverview,
+        posArrEnergyOverview[11][1].x,
+        posArrEnergyOverview[11][1].y,
+        this.sevenBlue
+      );
+    }
+
     this.appendPath(
       'house',
       energyOverview,
@@ -262,7 +278,7 @@ export class SevenOverviewComponent implements OnInit {
       'grey'
     );
     this.appendText(
-      toGridValueString,
+      'xx',
       energyOverview,
       posArrEnergyOverview[6][5].x,
       posArrEnergyOverview[6][5].y,
@@ -285,14 +301,14 @@ export class SevenOverviewComponent implements OnInit {
       0.06
     );
     this.appendText(
-      'production',
+      'to EV',
       energyOverview,
       posArrEnergyOverview[13][5].x,
       posArrEnergyOverview[13][5].y,
       'grey'
     );
     this.appendText(
-      toGridValueString,
+      'xx',
       energyOverview,
       posArrEnergyOverview[14][5].x,
       posArrEnergyOverview[14][5].y,
