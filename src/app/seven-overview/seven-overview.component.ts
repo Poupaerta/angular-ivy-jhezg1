@@ -27,12 +27,17 @@ export class SevenOverviewComponent implements OnInit {
   private heightEnergy;
   private toGridDirection;
   private gridValueString;
+  private productionValueString;
+  private evValueString;
+  private gasValueString;
+  private electricityValueString;
+  private co2ValueString;
 
   constructor() {
     this.width = 900 - this.margin.left - this.margin.right;
     this.height = 505 - this.margin.bottom - this.margin.top; //standard screen ratio 16:9
     this.betweenMargin = 20;
-    this.fontSize = 16;
+    this.fontSize = 18;
     this.sevenBlue = '#5282c6';
     this.widthRatioEnergy = 0.65;
     this.widthEnergy =
@@ -67,6 +72,58 @@ export class SevenOverviewComponent implements OnInit {
     this.gridValueString =
       Math.abs(_.round(gridValue, 3).toFixed(1)) + ' ' + gridValueUnit;
     this.toGridDirection = gridValue < 0 ? true : false;
+
+    // Production(solar panels)
+    var productionValueTagIndex = reportDataOverviewTagHistory.data.findIndex(
+      (item) => item.Tag.Asset.Code == 'Solar Inverter'
+    );
+    var productionValue =
+      reportDataOverviewTagHistory.data[productionValueTagIndex].Values[0]
+        .FloatingPointValue;
+    var productionValueUnit =
+      reportDataOverviewTagHistory.data[productionValueTagIndex].MeasurementUnit
+        .Symbol;
+    this.productionValueString =
+      Math.abs(_.round(productionValue, 3).toFixed(1)) +
+      ' ' +
+      productionValueUnit;
+
+    // EV
+    var evArray = reportDataOverviewTagHistory.data.filter((item) =>
+      item.Tag.Asset.Path.includes('EVStation')
+    );
+    var evValueUnit = '';
+    var sumEvValue = evArray.reduce(function (acc, obj) {
+      evValueUnit = obj.MeasurementUnit.Symbol;
+      return acc + obj.Values[0].FloatingPointValue;
+    }, 0);
+    this.evValueString =
+      Math.abs(_.round(sumEvValue, 3).toFixed(1)) + ' ' + evValueUnit;
+
+    // Gas consumption (10.2 kWh per m³ gas)
+    var gasArray = reportDataOverviewTagHistory.data.filter((item) =>
+      item.Tag.Asset.Path.includes('Gas burner')
+    );
+    var gasValueUnit = '';
+    var sumGas15minValue = gasArray.reduce(function (acc, obj) {
+      gasValueUnit = obj.MeasurementUnit.Symbol;
+      return acc + obj.Values[0].FloatingPointValue;
+    }, 0);
+    var sumGasValue = sumGas15minValue * 4;
+    gasValueUnit = gasValueUnit == 'm³' ? 'kWh' : 'unknown';
+    this.gasValueString =
+      Math.abs(_.round(sumGasValue * 10.2, 3).toFixed(1)) + ' ' + gasValueUnit;
+
+    //Electricity consumption
+    this.electricityValueString =
+      _.round(gridValue - sumEvValue + productionValue, 3).toFixed(1) + ' kWh';
+
+    // CO2 (220g / kwh electricity and 0.833 kg/m3 gas)
+    this.co2ValueString =
+      _.round(
+        (gridValue - productionValue) * 0.22 + sumGasValue * 0.833,
+        3
+      ).toFixed(1) + ' kgh';
   }
 
   private createSvg() {
@@ -181,16 +238,15 @@ export class SevenOverviewComponent implements OnInit {
       posArrEnergyOverview[1][2].y,
       'grey',
       0.04,
-      { moveRight: 24, moveUp: 10 }
+      { moveRight: 24, moveUp: 5 }
     );
-    var CO2ValueString = 'xxxxxx kgh';
     this.appendText(
-      CO2ValueString,
+      this.co2ValueString,
       energyOverview,
       posArrEnergyOverview[2][2].x,
       posArrEnergyOverview[2][2].y,
       this.sevenBlue,
-      { moveRight: 35 }
+      { moveRight: 25 }
     );
     this.appendPath(
       'light',
@@ -216,7 +272,7 @@ export class SevenOverviewComponent implements OnInit {
       'grey'
     );
     this.appendText(
-      'x kWh',
+      this.electricityValueString,
       energyOverview,
       posArrEnergyOverview[10][3].x,
       posArrEnergyOverview[10][3].y,
@@ -256,7 +312,7 @@ export class SevenOverviewComponent implements OnInit {
       { moveLeft: 55, moveDown: 7 }
     );
     this.appendText(
-      'x kWh',
+      this.gasValueString,
       energyOverview,
       posArrEnergyOverview[18][3].x,
       posArrEnergyOverview[18][3].y,
@@ -278,7 +334,7 @@ export class SevenOverviewComponent implements OnInit {
       'grey'
     );
     this.appendText(
-      'xx',
+      this.productionValueString,
       energyOverview,
       posArrEnergyOverview[6][5].x,
       posArrEnergyOverview[6][5].y,
@@ -308,7 +364,7 @@ export class SevenOverviewComponent implements OnInit {
       'grey'
     );
     this.appendText(
-      'xx',
+      this.evValueString,
       energyOverview,
       posArrEnergyOverview[14][5].x,
       posArrEnergyOverview[14][5].y,
@@ -557,6 +613,7 @@ export class SevenOverviewComponent implements OnInit {
     }
     return arr;
   }
+  //Datasource
   private detailTypes = {
     temp: reportDataOverviewComfort.data.TotalSummary
       .TemperaturePercentInComfort,
@@ -564,7 +621,7 @@ export class SevenOverviewComponent implements OnInit {
     humidity:
       reportDataOverviewComfort.data.TotalSummary.RelHumidityPercentInComfort,
   };
-  private icons: { [key: string]: string } = {
+  private icons = {
     temp: 'm 314.4372 725 c 0 54.3656 -44.0719 98.4375 -98.4375 98.4375 c -54.3656 0 -98.4375 -44.0719 -98.4375 -98.4375 c 0 -39.266 22.9957 -73.1514 56.25 -88.9523 V 317.1875 c 0 -23.2998 18.8877 -42.1875 42.1875 -42.1875 c 23.2998 0 42.1875 18.8877 42.1875 42.1875 v 318.8602 c 33.2543 15.801 56.25 49.6863 56.25 88.9523 z m 70.3125 -148.8041 c 35.0016 39.6615 56.25 91.7473 56.25 148.8041 c 0 124.2703 -100.7262 225 -225 225 c -0.5256 0 -1.0723 0 -1.5978 -0.01 C 90.8241 949.1369 -9.6278 847.407 -8.9968 723.8275 C -8.7085 667.2295 12.489 615.5867 47.2497 576.1959 V 218.75 c 0 -93.1975 75.5525 -168.75 168.75 -168.75 c 93.1975 0 168.75 75.5525 168.75 168.75 z M 370.6872 725 c 0 -65.3326 -37.1812 -100.6084 -56.25 -122.2154 V 218.75 c 0 -54.2777 -44.1598 -98.4375 -98.4375 -98.4375 c -54.2795 0 -98.4375 44.1598 -98.4375 98.4375 V 602.7846 C 98.2667 624.65 61.6445 659.5285 61.314 724.1861 C 60.8798 809.0727 130.0286 879.0934 214.8888 879.684 h 1.1109 c 85.2961 0 154.6875 -69.3932 154.6875 -154.6875 z',
 
     CO2: 'm 349 88 c -124.3125 0 -225 100.6875 -225 225 c 0 3.7969 0.1395 7.5932 0.2802 11.3901 C 45.5302 352.0932 -11 427.1875 -11 515.5 C -11 627.2969 79.7031 718 191.5 718 H 709 C 808.4219 718 889 637.4219 889 538 C 889 450.9531 827.1245 378.2495 744.9995 361.6557 C 750.7651 346.6088 754 330.1563 754 313 C 754 238.4688 693.5313 178 619 178 c -27.7031 0 -53.5792 8.4364 -74.9542 22.7801 C 505.0927 133.2801 432.3906 88 349 88 Z m -57.9858 333.2373 c 18.457 0 34.0137 2.3291 46.6699 6.9873 v 41.001 c -12.6563 -7.5586 -27.0703 -11.3379 -43.2422 -11.3379 c -17.7539 0 -32.0801 5.581 -42.9785 16.7432 c -10.8984 11.1621 -16.3476 26.2793 -16.3477 45.3516 c 0 18.2813 5.1416 32.8711 15.4248 43.7695 c 10.2832 10.8106 24.126 16.2158 41.5283 16.2158 c 16.6113 0 31.8164 -4.043 45.6152 -12.1289 v 38.8916 C 323.8853 613.4101 305.8677 616.75 283.6313 616.75 c -29.0039 0 -51.8115 -8.5254 -68.4228 -25.5762 c -16.6113 -17.0508 -24.917 -39.7705 -24.917 -68.1592 c 0 -30.2344 9.3164 -54.7559 27.9492 -73.5644 c 18.7207 -18.8086 42.9785 -28.2129 72.7734 -28.2129 z m 159.6533 0 c 26.9824 0 48.7793 8.833 65.3906 26.499 c 16.6992 17.666 25.0488 40.957 25.0488 69.873 c 0 29.707 -8.6572 53.6572 -25.9717 71.8506 c -17.2265 18.1933 -39.7266 27.29 -67.5 27.29 c -27.0703 0 -49.1309 -8.7891 -66.1816 -26.3672 c -17.0508 -17.666 -25.5762 -40.6494 -25.5762 -68.9502 c 0 -29.8828 8.6572 -54.0527 25.9717 -72.5098 c 17.3145 -18.457 40.2539 -27.6855 68.8184 -27.6855 z m 175.7373 0 c 9.5801 0 18.1494 1.2744 25.708 3.8232 c 7.6465 2.4609 14.1065 6.0205 19.3799 10.6787 c 5.2734 4.6582 9.2725 10.3271 11.9971 17.0068 c 2.8125 6.5918 4.2188 13.9746 4.2188 22.1484 c 0 8.7012 -1.3623 16.4355 -4.0869 23.2031 c -2.6367 6.7676 -6.1963 12.9199 -10.6787 18.457 c -4.3945 5.5371 -9.4922 10.6348 -15.293 15.293 c -5.8008 4.5703 -11.8213 9.0088 -18.0615 13.3154 c -4.2188 2.9883 -8.3057 5.9765 -12.2607 8.9648 c -3.8672 2.9004 -7.2949 5.8008 -10.2832 8.7012 c -2.9883 2.8125 -5.3613 5.5811 -7.1191 8.3057 c -1.7578 2.7246 -2.6367 5.3174 -2.6367 7.7783 h 80.1563 V 613.4541 H 561.6734 v -14.2383 c -0 -9.668 1.626 -18.3252 4.8779 -25.9717 c 3.252 -7.7344 7.3389 -14.6338 12.2608 -20.6982 c 4.9219 -6.1524 10.2832 -11.5576 16.084 -16.2158 c 5.8887 -4.7461 11.4697 -9.0088 16.7431 -12.7881 c 5.5371 -3.9551 10.3711 -7.7344 14.502 -11.3379 c 4.2188 -3.6035 7.7344 -7.1631 10.5469 -10.6787 c 2.9004 -3.6035 5.0537 -7.207 6.46 -10.8105 c 1.4063 -3.6914 2.1094 -7.6025 2.1094 -11.7334 c -0 -8.086 -2.2852 -14.1944 -6.8555 -18.3252 c -4.5703 -4.1309 -11.5576 -6.1963 -20.9619 -6.1963 c -16.2598 0 -31.8164 6.46 -46.6699 19.3799 v -36.6504 c 16.4355 -10.6348 34.9805 -15.9521 55.6348 -15.9521 z m -176.9238 36.6504 c -14.9414 0 -26.8066 5.625 -35.5957 16.875 c -8.7891 11.1621 -13.1836 25.9717 -13.1836 44.4287 c 0 18.7207 4.3945 33.5303 13.1836 44.4287 c 8.7891 10.8984 20.3027 16.3477 34.541 16.3477 c 14.6777 0 26.3233 -5.2734 34.9365 -15.8203 c 8.6133 -10.6348 12.9199 -25.3564 12.9199 -44.165 c 0 -19.5996 -4.1748 -34.8486 -12.5244 -45.7471 c -8.3496 -10.8984 -19.7754 -16.3477 -34.2773 -16.3477 z',
